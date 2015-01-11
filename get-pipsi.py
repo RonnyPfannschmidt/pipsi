@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import sys
+from subprocess import call
 
 
 def echo(msg=''):
@@ -19,6 +20,11 @@ def succeed(msg):
     sys.exit(0)
 
 
+def command_exists(cmd):
+    with open(os.devnull, 'w') as null:
+        return call([cmd, '--version'], stdout=null, stderr=null) == 0
+
+
 def main():
     print('Installing pipsi')
     bin_dir = os.path.expanduser('~/.local/bin')
@@ -26,10 +32,10 @@ def main():
     if os.name != 'posix':
         fail('So sorry, but pipsi only works on POSIX systems :(')
 
-    if os.system('pipsi --version >/dev/null 2>/dev/null') == 0:
+    if command_exists('pipsi'):
         succeed('You already have pipsi installed')
 
-    if os.system('virtualenv --version >/dev/null 2>/dev/null') != 0:
+    if not command_exists('virtualenv'):
         fail('You need to have virtualenv installed to bootstrap pipsi.')
 
     try:
@@ -38,7 +44,6 @@ def main():
         pass
 
     import shutil
-    from subprocess import Popen
     venv = os.path.expanduser('~/.local/venvs/pipsi')
 
     def _cleanup():
@@ -47,17 +52,17 @@ def main():
         except (OSError, IOError):
             pass
 
-    if Popen(['virtualenv', venv]).wait() != 0:
+    if call(['virtualenv', venv]) != 0:
         _cleanup()
         fail('Could not create virtualenv for pipsi :(')
 
-    if Popen([venv + '/bin/pip', 'install', 'pipsi']).wait() != 0:
+    if call([venv + '/bin/pip', 'install', 'pipsi']) != 0:
         _cleanup()
         fail('Could not install pipsi :(')
 
     os.symlink(venv + '/bin/pipsi', bin_dir + '/pipsi')
 
-    if os.system('pipsi --version >/dev/null 2>/dev/null') != 0:
+    if not command_exists('pipsi') != 0:
         echo()
         echo('=' * 60)
         echo()
